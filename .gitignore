@@ -1,0 +1,6 @@
+# ──────────────────────────────────────────────────────────────
+#  GIT CONFIGURATION (Privacy)
+#  These files contain personal emails and local file paths 
+#  that should never be pushed to a public repository.
+# ──────────────────────────────────────────────────────────────
+.gitconfig-work

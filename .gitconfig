@@ -1,0 +1,56 @@
+[user]
+    name = RajTewari01
+    email = tewari765@gmail.com
+    signingkey = ~/.ssh/id_ed25519.pub
+
+[commit]
+    gpgsign = true
+
+[gpg]
+    format = ssh
+
+# Load work profile when inside company project directories
+[includeIf "gitdir:D:/Sora_Health_System/"]
+    path = D:/Sora_Health_System/.gitconfig-work
+
+[core]
+    editor = nvim
+    pager = delta
+
+[interactive]
+    diffFilter = delta --color-only
+
+[alias]
+    status = status -sb
+    log = log --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset' --abbrev-commit
+    tree = log --graph --decorate --oneline --all
+    stage-all = add -A
+    commit-file = commit -F
+
+[pull]
+    rebase = true
+
+[help]
+    autocorrect = 1
+
+[init]
+    defaultBranch = main
+
+[delta]
+    navigate = true
+
+[merge]
+    conflictstyle = zdiff3
+
+[rerere]
+    enabled = true
+
+[push]
+    autoSetupRemote = true
+
+[diff]
+    colorMoved = default
+
+[rebase]
+    autoStash = true
+
