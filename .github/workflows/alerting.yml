@@ -44,6 +44,13 @@ jobs:
     runs-on: ubuntu-latest
     if: ${{ github.event.workflow_run.conclusion == 'failure' }}
     steps:
+      - name: "Login to Jira"
+        uses: atlassian/gajira-login@v3
+        env:
+          JIRA_BASE_URL: ${{ secrets.JIRA_BASE_URL }}
+          JIRA_USER_EMAIL: ${{ secrets.JIRA_USER_EMAIL }}
+          JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
+
       - name: "Create Jira Issue"
         uses: atlassian/gajira-create@v3
         with:
@@ -55,8 +62,3 @@ jobs:
             Branch: ${{ github.event.workflow_run.head_branch }}
             Author: ${{ github.event.workflow_run.actor.login }}
             Run: ${{ github.event.workflow_run.html_url }}
-        env:
-          JIRA_BASE_URL: ${{ secrets.JIRA_BASE_URL }}
-          JIRA_USER_EMAIL: ${{ secrets.JIRA_USER_EMAIL }}
-          JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
-      
