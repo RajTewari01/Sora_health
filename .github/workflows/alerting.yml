@@ -54,7 +54,7 @@ jobs:
       - name: "Create Jira Issue"
         uses: atlassian/gajira-create@v3
         with:
-          project: SORA_HEALTH
+          project: SHM
           issuetype: Bug
           summary: "CI Failed: ${{ github.event.workflow_run.name }}"
           description: |
