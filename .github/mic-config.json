@@ -1,0 +1,31 @@
+{
+    "ignorePatterns": [
+        {
+            "pattern": "^https://github.com/.*/(edit|new|upload)",
+            "reason": "Ignore github url in readme docs <edit | new | upload> ",
+            "type": "regex"
+        },
+        {
+            "pattern": "^https?://\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}(\\?.*)?",
+            "reason": "Ignore ip address in readme docs <http://[IP_ADDRESS]/>",
+            "type": "regex"
+        },
+        {
+            "pattern": "^https?://localhost(.*)?",
+            "reason": "Ignore localhost url in readme docs <http://localhost(...)>",
+            "type": "regex"
+        }
+    ],
+    "replacementPatterns": [
+        {
+            "pattern": "^/docs/",
+            "replacement": "https://github.com/RajTewari01/Sora_Health_System/tree/main/docs/"
+        }
+    ]
+    ,
+    "timeout": "10s",
+    "retryOn429": true,
+    "retryCount": 3,
+    "aliveStatusCodes": [200, 206, 301, 302]
+}
+

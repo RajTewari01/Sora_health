@@ -1,0 +1,198 @@
+# ──────────────────────────────────────────────────────────────
+#  SECURITY — Enterprise Vulnerability Scanning
+#  Runs on every push and pull request.
+#  Covers: Secret Scanning, SAST (Bandit), Dependency Audits
+# ──────────────────────────────────────────────────────────────
+
+name: "Security Checks"
+
+on:
+  push:
+    branches: ["main", "master"]
+  pull_request:
+    branches: ["main", "master"]
+
+concurrency:
+  group: security-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  # ── 1. Secret Scanning ─────────────────────────────────────────
+  secret-scanning:
+    name: "TruffleHog Secret Scanner"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # TruffleHog needs full history to scan commits
+
+      - name: Run TruffleHog
+        uses: trufflesecurity/trufflehog@main
+        with:
+          path: ./
+          base: ${{ github.event.repository.default_branch }}
+          head: HEAD
+          extra_args: --debug --only-verified
+
+  # ── 2. SAST (Static Application Security Testing) ──────────────
+  sast-bandit:
+    name: "Bandit Python SAST"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install Bandit
+        run: pip install bandit
+
+      - name: Run Bandit (backend and db scripts)
+        # -r: recursive
+        # -ll: report only medium and high severity issues
+        # -ii: report only medium and high confidence issues
+        run: |
+          # We use `|| true` so it doesn't fail if the directory doesn't exist yet
+          if [ -d "src/backend" ] || [ -d "db" ]; then
+            bandit -r src/backend/ db/ -ll -ii
+          else
+            echo "Target directories not found, skipping SAST."
+          fi
+
+  # ── 3. Dependency Vulnerability Audit ─────────────────────────
+  dependency-audit:
+    name: "Dependency CVE Audit"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install Dependencies & pip-audit
+        run: |
+          pip install pip-audit
+          if [ -f requirements.txt ]; then
+            pip install -r requirements.txt
+          fi
+          if [ -f pyproject.toml ]; then
+            pip install -e .
+          fi
+
+      - name: Run pip-audit
+        # Scans the active environment for packages with known CVEs
+        run: pip-audit
+
+  # ── 4. Next.js (Web) Security ─────────────────────────────────
+  nextjs-security:
+    name: "Next.js Security (npm audit & njsscan)"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: npm audit (Check Dependencies)
+        run: |
+          # We use `|| true` so it warns without failing if no package.json is present yet
+          if [ -d "src/frontend/web" ] && [ -f "src/frontend/web/package.json" ]; then
+            cd src/frontend/web
+            npm audit --audit-level=high || true
+          else
+            echo "Next.js web directory or package.json not found. Skipping."
+          fi
+
+      - name: njsscan (Node.js SAST)
+        uses: ajinabraham/njsscan-action@master
+        with:
+          args: 'src/frontend/web/'
+
+  # ── 5. Flutter (Mobile) Security ──────────────────────────────
+  flutter-security:
+    name: "Flutter Dart Analyzer"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.x"
+
+      - name: Dart Analyze
+        run: |
+          if [ -d "src/frontend/mobile" ] && [ -f "src/frontend/mobile/pubspec.yaml" ]; then
+            cd src/frontend/mobile
+            flutter pub get
+            flutter analyze
+          else
+            echo "Flutter mobile directory or pubspec.yaml not found. Skipping."
+          fi
+
+  # ── 6. Docker Container Security (Trivy) ──────────────────────
+  docker-security:
+    name: "Trivy Docker Vulnerability Scanner"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Run Trivy vulnerability scanner
+        # This scans the actual Dockerfiles and configurations in your repo
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'table'
+          exit-code: '1'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'CRITICAL,HIGH'
+
+  # ── 7. Infrastructure as Code (IaC) Security ──────────────────
+  iac-security:
+    name: "Checkov IaC Scanner (Docker Compose)"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Checkov GitHub Action
+        uses: bridgecrewio/checkov-action@master
+        with:
+          directory: .
+          framework: dockerfile,dockercompose
+          soft_fail: true # Set to true initially so it warns instead of blocking your workflow immediately
+
+  # ── 8. Open Source License Compliance ──────────────────────────
+  license-compliance:
+    name: "Trivy License Scanner."
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Run Trivy License Scanner
+        # Scans the repository for problematic open-source licenses (like GPL/AGPL)
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          scanners: 'license'
+          format: 'table'
+          exit-code: '1'

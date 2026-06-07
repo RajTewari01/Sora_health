@@ -1,0 +1,62 @@
+name: "Alerting and Notifications."
+
+on:
+  workflow_run:
+    workflows: ["Docs checker -- documentation quality and completeness","Lints checker -- code quality and file hygiene","Security Checks"]
+    types: [completed]
+    branches: 
+    - "main"
+    - "master"
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  notify_in_slack:
+    name: "Notify in slack channel"
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'failure' }}
+    steps: 
+      - name: "Notify."
+        run: |
+          curl -X POST -H 'Content-type: application/json' \
+            --data '{
+              "text": "🚨 *${{ github.event.workflow_run.name }}* failed!\nBranch: `${{ github.event.workflow_run.head_branch }}`\nAuthor: ${{ github.event.workflow_run.actor.login }}"
+            }' \
+            ${{ secrets.SLACK_WEBHOOK_URL }}
+  
+  notify_success_in_slack:
+    name: "Notify success in slack channel"
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    steps: 
+      - name: "Notify."
+        run: |
+          curl -X POST -H 'Content-type: application/json' \
+            --data '{
+              "text": "✅ *${{ github.event.workflow_run.name }}* succeeded!\nBranch: `${{ github.event.workflow_run.head_branch }}`\nAuthor: ${{ github.event.workflow_run.actor.login }}"
+            }' \
+            ${{ secrets.SLACK_WEBHOOK_URL }}
+        
+  create_jira_ticket:
+    name: "Create jira ticket on workflow failure."
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'failure' }}
+    steps:
+      - name: "Create Jira Issue"
+        uses: atlassian/gajira-create@v3
+        with:
+          project: SORA_HEALTH
+          issuetype: Bug
+          summary: "CI Failed: ${{ github.event.workflow_run.name }}"
+          description: |
+            Pipeline *${{ github.event.workflow_run.name }}* failed.
+            Branch: ${{ github.event.workflow_run.head_branch }}
+            Author: ${{ github.event.workflow_run.actor.login }}
+            Run: ${{ github.event.workflow_run.html_url }}
+        env:
+          JIRA_BASE_URL: ${{ secrets.JIRA_BASE_URL }}
+          JIRA_USER_EMAIL: ${{ secrets.JIRA_USER_EMAIL }}
+          JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
+      

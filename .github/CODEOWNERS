@@ -1,0 +1,22 @@
+# =====================================
+# Code Owner for Sora Health System
+# =====================================
+* @RajTewari01 
+
+# =====================================
+# File-Specific Owners (Optional)
+# =====================================
+
+# Backend Services
+src/backend/services/email/ @RajTewari01
+src/frontend/ @RajTewari01
+# Documentation
+*.md @RajTewari01
+# CI/CD
+/.github/ @RajTewari01
+
+
+
+
+
+

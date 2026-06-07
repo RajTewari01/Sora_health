@@ -1,0 +1,130 @@
+# ──────────────────────────────────────────────────────────────
+#  DOCS — Documentation Quality & Completeness
+#  Validates docstrings, Markdown links, README, and code TODOs.
+# ──────────────────────────────────────────────────────────────
+
+name : "Docs checker -- documentation quality and completeness"
+
+on:
+    push:
+        branches : ["main","master"]
+        paths:
+          - "docs/**"
+          - "src/**"
+          - "README.md"
+          - "*.md"
+    pull_request :
+        branches : ["main","master"]
+
+concurrency:
+  group: docs-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents : read
+
+jobs:
+
+  # ── Docstring Coverage ──────────────────────────────────────
+  docstring-check:
+    name : "Python docstring-checks"
+    runs-on : ubuntu-latest
+
+    steps :
+      - name : "check the repository."
+        uses : actions/checkout@v4
+
+      - name : "setup python 3.10"
+        uses : actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name : "install pydocstyle"
+        run : pip install pydocstyle
+
+      - name : "pydocstyle lint <<check>>."
+        run : |
+          pydocstyle src/ \
+            --convention=google \
+            --add-ignore=D100,D104,D105,D107 \
+            --count || true
+        # D100: module docstring, D104: package docstring
+        # D105: magic method, D107: __init__ docstring
+        # Using || true to warn without failing until codebase matures
+
+  # ── Markdown Link Validation ────────────────────────────────
+  link-check:
+    name : "Markdown links"
+    runs-on : ubuntu-latest
+
+    steps :
+      - name : "check the repository."
+        uses : actions/checkout@v4
+
+      - name : "check markdown links."
+        uses : gaurav-nelson/github-action-markdown-link-check@v1
+        with:
+          config-file: ".github/mlc_config.json"
+          folder-path: "docs/,."
+          file-extension: ".md"
+          check-modified-files-only: "yes"
+          use-quiet-mode: "yes"
+        continue-on-error: true
+
+  # ── README Validation ───────────────────────────────────────
+  readme-check:
+    name : "README quality"
+    runs-on : ubuntu-latest
+
+    steps :
+      - name : "check the repository."
+        uses : actions/checkout@v4
+
+      - name : "verify README exists and is non-empty."
+        run : |
+          if [ ! -f "README.md" ]; then
+            echo "::error::README.md is missing"
+            exit 1
+          fi
+
+          LINES=$(wc -l < README.md)
+          if [ "$LINES" -lt 5 ]; then
+            echo "::warning::README.md has only $LINES lines — consider adding project documentation"
+          fi
+
+      - name : "check for required README sections."
+        run : |
+          for section in "##" ; do
+            if ! grep -q "$section" README.md; then
+              echo "::warning::README.md has no headings — consider structuring with ## sections"
+              break
+            fi
+          done
+
+  # ── TODO / FIXME Scanner ────────────────────────────────────
+  todo-scanner:
+    name : "TODO/FIXME tracker"
+    runs-on : ubuntu-latest
+
+    steps :
+      - name : "check the repository."
+        uses : actions/checkout@v4
+
+      - name : "scan for TODO/FIXME/HACK comments."
+        run : |
+          echo "### Open code annotations ###"
+          echo ""
+
+          echo "-- TODO --"
+          git grep -rIn 'TODO' -- 'src/' 'tests/' '*.py' ':!evenv/' || echo "  (none)"
+          echo ""
+
+          echo "-- FIXME --"
+          git grep -rIn 'FIXME' -- 'src/' 'tests/' '*.py' ':!evenv/' || echo "  (none)"
+          echo ""
+
+          echo "-- HACK --"
+          git grep -rIn 'HACK' -- 'src/' 'tests/' '*.py' ':!evenv/' || echo "  (none)"
+
+          # This job always passes — it is informational
+          exit 0

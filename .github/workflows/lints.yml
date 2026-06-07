@@ -1,0 +1,77 @@
+# ──────────────────────────────────────────────────────────────
+#  LINT — Code Quality & File Hygiene
+#  Runs on every push and pull request.
+#  Covers: Python (Ruff), Markdown, and File Hygiene.
+# ──────────────────────────────────────────────────────────────
+
+name : "Lints checker -- code quality and file hygiene"
+on:
+    push:
+        branches : ["main","master"]
+    pull_request :
+        branches : ["main","master"]
+
+concurrency:
+  group: lint-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents : read
+
+jobs:
+
+  python-lint:
+    name : "Python lint-checks"
+    runs-on : ubuntu-latest
+    steps :
+      - name : "check the repository."
+        uses : actions/checkout@v4
+
+      - name : "setup python 3.11"
+        uses : actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          
+      - name : "install ruff"
+        run : pip install ruff
+      
+      - name : "ruff lint <<check>>."
+        run : ruff check . --output-format=github
+
+      - name : "ruff format(check)"
+        run : ruff format --check --diff .
+
+  # ── Markdown Lint ───────────────────────────────────────────
+  markdown-lint:
+    name: "Markdown"
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Lint Markdown files
+        uses: DavidAnson/markdownlint-cli2-action@v19
+        with:
+          globs: |
+            **/*.md
+            !evenv/**
+            !node_modules/**
+            !.git/**
+
+  # ── File Hygiene ────────────────────────────────────────────
+  file-hygiene:
+    name: "File Hygiene & Format Validation"
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Run Python Hygiene Checks
+        run: python .github/scripts/hygiene_checks.py
