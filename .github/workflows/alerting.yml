@@ -55,7 +55,7 @@ jobs:
         uses: atlassian/gajira-create@v3
         with:
           project: SHM
-          issuetype: Bug
+          issuetype: Task
           summary: "CI Failed: ${{ github.event.workflow_run.name }}"
           description: |
             Pipeline *${{ github.event.workflow_run.name }}* failed.
