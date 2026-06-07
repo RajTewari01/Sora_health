@@ -44,21 +44,22 @@ jobs:
     runs-on: ubuntu-latest
     if: ${{ github.event.workflow_run.conclusion == 'failure' }}
     steps:
-      - name: "Login to Jira"
-        uses: atlassian/gajira-login@v3
-        env:
-          JIRA_BASE_URL: ${{ secrets.JIRA_BASE_URL }}
-          JIRA_USER_EMAIL: ${{ secrets.JIRA_USER_EMAIL }}
-          JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
-
-      - name: "Create Jira Issue"
-        uses: atlassian/gajira-create@v3
-        with:
-          project: SHM
-          issuetype: Task
-          summary: "CI Failed: ${{ github.event.workflow_run.name }}"
-          description: |
-            Pipeline *${{ github.event.workflow_run.name }}* failed.
-            Branch: ${{ github.event.workflow_run.head_branch }}
-            Author: ${{ github.event.workflow_run.actor.login }}
-            Run: ${{ github.event.workflow_run.html_url }}
+      - name: "Create Jira Issue via API"
+        run: |
+          curl --request POST \
+            --url "${{ secrets.JIRA_BASE_URL }}/rest/api/2/issue" \
+            --user "${{ secrets.JIRA_USER_EMAIL }}:${{ secrets.JIRA_API_TOKEN }}" \
+            --header 'Accept: application/json' \
+            --header 'Content-Type: application/json' \
+            --data '{
+            "fields": {
+              "project": {
+                "key": "SHM"
+              },
+              "summary": "CI Failed: ${{ github.event.workflow_run.name }}",
+              "description": "Pipeline *${{ github.event.workflow_run.name }}* failed.\nBranch: ${{ github.event.workflow_run.head_branch }}\nAuthor: ${{ github.event.workflow_run.actor.login }}\nRun: ${{ github.event.workflow_run.html_url }}",
+              "issuetype": {
+                "name": "Task"
+              }
+            }
+          }'
